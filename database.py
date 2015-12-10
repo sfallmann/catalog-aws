@@ -3,8 +3,9 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import scoped_session, sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
 
+_cwd = os.path.dirname(os.path.abspath(__file__))
+db_path = 'sqlite:///' + os.path.join(_cwd, 'catalog.db')
 
-db_path = 'sqlite:///catalog.db'
 
 # From http://flask.pocoo.org/docs/0.10/patterns/sqlalchemy/
 engine = create_engine(db_path, convert_unicode=True)

@@ -23,16 +23,16 @@ import json
 import datetime
 from datetime import timedelta
 from flask import Flask, render_template, request, redirect, abort
-from flask import jsonify, url_for, flash, make_response, Markup
+from flask import jsonify, url_for, flash, make_response
 from flask import session as login_session, send_from_directory
-from sqlalchemy import create_engine, asc, desc
+from sqlalchemy import asc, desc
 from sqlalchemy.orm.exc import NoResultFound
 from oauth2client.client import flow_from_clientsecrets
 from oauth2client.client import FlowExchangeError
 from werkzeug import secure_filename
 from werkzeug.contrib.atom import AtomFeed
-from models import Base, User, Category, Item
-from database import db_session as session
+from models import User, Category, Item
+from database import db_session as session, _cwd
 
 
 # Default image for items obtained here:
@@ -40,12 +40,15 @@ from database import db_session as session
 
 APPLICATION_NAME = "Imperial Catalog"
 
+GP_CLIENT_SECRETS = os.path.join(_cwd, 'client_secrets.json')
+FB_CLIENT_SECRETS = os.path.join(_cwd, 'fb_client_secrets.json')
+
 # Client secrets file for Google authentication
 CLIENT_ID = json.loads(
-    open('client_secrets.json', 'r').read())['web']['client_id']
+    open(GP_CLIENT_SECRETS, 'r').read())['web']['client_id']
 
 # Name of the upload folder
-UPLOAD_FOLDER = 'uploads/'
+UPLOAD_FOLDER = os.path.join(_cwd, 'uploads/')
 
 # Filetypes allowed for upload
 # TODO: Verify by MIME type
@@ -173,7 +176,7 @@ def gconnect():
 
     try:
         # Upgrade the authorization code into a credentials object
-        oauth_flow = flow_from_clientsecrets('client_secrets.json', scope='')
+        oauth_flow = flow_from_clientsecrets(GP_CLIENT_SECRETS, scope='')
         oauth_flow.redirect_uri = 'postmessage'
         credentials = oauth_flow.step2_exchange(code)
     except FlowExchangeError:
@@ -303,10 +306,10 @@ def fbconnect():
 
     access_token = request.form.get('access_token')
 
-    app_id = json.loads(open('fb_client_secrets.json', 'r').read())[
+    app_id = json.loads(open(FB_CLIENT_SECRETS, 'r').read())[
         'web']['app_id']
     app_secret = json.loads(
-        open('fb_client_secrets.json', 'r').read())['web']['app_secret']
+        open(FB_CLIENT_SECRETS, 'r').read())['web']['app_secret']
     url = 'https://graph.facebook.com/oauth/access_token?grant_type='\
           'fb_exchange_token&client_id=%s&client_secret=%s&'\
           'fb_exchange_token=%s' % (app_id, app_secret, access_token)
@@ -392,7 +395,7 @@ def disconnect():
         del login_session['user_id']
         del login_session['provider']
 
-        flash("You have successfully been logged out.")
+        flash("You have been successfully logged out.")
 
         return redirect(url_for('catalog'))
     else:
@@ -963,7 +966,9 @@ def getLatestItems(num):
     return session.query(Item).order_by(Item.created.desc())[:num]
 
 
+app.secret_key = random_string()
+
 if __name__ == '__main__':
-    app.secret_key = random_string()
+
     app.debug = True
     app.run(host='0.0.0.0', port=8000)
